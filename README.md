@@ -5,6 +5,11 @@ A head-to-head latency benchmark of QNX's two primary IPC mechanisms:
 **POSIX shared memory** with semaphore synchronisation.
 
 <img width="1784" height="593" alt="plot_dist_64B" src="https://github.com/user-attachments/assets/0341808c-858e-426c-9fd1-4d1d60207ce4" />
+<img width="1784" height="593" alt="plot_dist_16384B" src="https://github.com/user-attachments/assets/653efd14-38f9-42de-908b-d6933d57b9d2" />
+<img width="1934" height="763" alt="plot_sweep" src="https://github.com/user-attachments/assets/77e6b70a-d176-4ab7-9b7e-ee46cfa91048" />
+<img width="1600" height="864" alt="image" src="https://github.com/user-attachments/assets/8470f738-b3c7-4a64-bc9f-b9d6cf256e77" />
+
+
 
 
 ---
