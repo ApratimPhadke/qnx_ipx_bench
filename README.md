@@ -4,7 +4,8 @@ A head-to-head latency benchmark of QNX's two primary IPC mechanisms:
 **native message passing** (`MsgSend` / `MsgReceive`) and
 **POSIX shared memory** with semaphore synchronisation.
 
-![Benchmark results](results/qnx_ipc_benchmark.png)
+<img width="1784" height="593" alt="plot_dist_64B" src="https://github.com/user-attachments/assets/0341808c-858e-426c-9fd1-4d1d60207ce4" />
+
 
 ---
 
