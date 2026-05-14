@@ -1,224 +1,429 @@
-# QNX IPC Benchmark — Message Passing vs Shared Memory
+# QNX IPC Benchmark Suite
 
-A head-to-head latency benchmark of QNX's two primary IPC mechanisms:
-**native message passing** (`MsgSend` / `MsgReceive`) and
-**POSIX shared memory** with semaphore synchronisation.
+A professional RTOS IPC benchmarking project built on **QNX Neutrino 8.0** running inside **QEMU** on Ubuntu.
 
-<img width="1784" height="593" alt="plot_dist_64B" src="https://github.com/user-attachments/assets/0341808c-858e-426c-9fd1-4d1d60207ce4" />
-<img width="1784" height="593" alt="plot_dist_16384B" src="https://github.com/user-attachments/assets/653efd14-38f9-42de-908b-d6933d57b9d2" />
-<img width="1934" height="763" alt="plot_sweep" src="https://github.com/user-attachments/assets/77e6b70a-d176-4ab7-9b7e-ee46cfa91048" />
-<img width="1600" height="864" alt="image" src="https://github.com/user-attachments/assets/8470f738-b3c7-4a64-bc9f-b9d6cf256e77" />
+<img width="1784" height="593" alt="plot_dist_64B" src="https://github.com/user-attachments/assets/a22b5119-786f-44ac-98d3-85b74462ee38" />
+<img width="1784" height="593" alt="plot_dist_16384B" src="https://github.com/user-attachments/assets/2ead498e-cdf3-4d1d-9762-fd62a050e5c6" />
+<img width="1934" height="763" alt="plot_sweep" src="https://github.com/user-attachments/assets/f339a657-4593-41de-b2b2-d4d18eb16c17" />
+<img width="1934" height="763" alt="plot_sweep" src="https://github.com/user-attachments/assets/4f0eaf86-3005-43d6-80eb-eb10524dabe1" />
 
 
+This project benchmarks and compares two fundamental inter-process communication mechanisms used in real-time embedded systems:
 
+* QNX Native Message Passing (`MsgSend / MsgReceive / MsgReply`)
+* POSIX Shared Memory + Semaphores
 
----
+The benchmark measures:
 
-## Why this project?
-
-QNX Neutrino's microkernel architecture makes IPC the critical path for
-almost every real-time application.  The two dominant mechanisms sit at
-opposite ends of the design spectrum:
-
-| | Message Passing | Shared Memory |
-|---|---|---|
-| **Mechanism** | Kernel-mediated `MsgSend` / `MsgReceive` | `shm_open` + `mmap` + POSIX semaphores |
-| **Copy semantics** | Zero-copy in kernel (pulse / copy optimisation) | Truly zero-copy (direct pointer access) |
-| **Synchronisation** | Built-in (blocking send/reply) | Manual (semaphores) |
-| **Priority inheritance** | Yes (kernel-managed) | No |
-| **Typical use-case** | Service requests, driver calls | High-throughput data streaming |
-
-This project measures the **round-trip latency** of both under identical
-conditions and plots the distribution so you can make an informed design
-decision.
+* Average latency
+* p50 / p95 / p99 / p99.9 latency
+* Worst-case latency
+* Payload scaling behavior
+* IPC determinism under virtualization
 
 ---
 
-## Results
+# Project Overview
 
-> Measured over **10 000 iterations** (after 200 warm-up iterations) on a
-> QNX x86-64 target.
+Modern embedded systems — especially automotive ADAS, robotics, industrial controllers, and avionics — rely heavily on deterministic inter-process communication.
 
-| Metric | MsgPass (µs) | ShmMem (µs) |
-|--------|-------------|-------------|
-| **Mean** | 1513.0 | 1635.7 |
-| **Median** | 996.7 | 1098.5 |
-| **Std dev** | 4033.0 | 3339.4 |
-| **p99** | 13 608.3 | 14 006.3 |
-| **Min** | 649.6 | 692.1 |
-| **Max** | 267 617.7 | 261 061.1 |
+QNX is widely used in:
 
-**Key takeaways**
+* Automotive ECUs
+* Infotainment systems
+* Medical devices
+* Industrial automation
+* Safety-critical systems
 
-- Median latency of both mechanisms is in the same ballpark (~1 µs range),
-  showing QNX's kernel is exceptionally efficient at message passing.
-- Message passing has a slightly lower median but higher standard deviation,
-  consistent with occasional kernel scheduling jitter.
-- Shared memory shows tighter σ once the cache is warm — advantageous for
-  deterministic, high-frequency producer/consumer loops.
-- Both exhibit long-tail outliers (>200 ms max) caused by OS scheduling
-  interruptions on a non-isolated system; pin threads to isolated CPUs and
-  set `SCHED_FIFO` priority for tighter real-time bounds.
+This project simulates and benchmarks IPC behavior on a real RTOS environment.
 
 ---
 
-## Project layout
+# Technologies Used
 
+| Component      | Technology                               |
+| -------------- | ---------------------------------------- |
+| RTOS           | QNX Neutrino 8.0                         |
+| Virtualization | QEMU                                     |
+| Host OS        | Ubuntu Linux                             |
+| Language       | C                                        |
+| Visualization  | Python + Matplotlib                      |
+| IPC Mechanisms | QNX Message Passing, POSIX Shared Memory |
+
+---
+
+# IPC Mechanisms Benchmarked
+
+## 1. QNX Native Message Passing
+
+QNX uses synchronous message passing as its core IPC mechanism.
+
+Functions used:
+
+```c
+MsgSend()
+MsgReceive()
+MsgReply()
 ```
-qnx_ipc_bench/
-├── src/
-│   ├── msg_server.c      # MsgReceive loop, replies to every client message
-│   ├── msg_client.c      # MsgSend loop, records round-trip latency
-│   ├── shm_writer.c      # Writes payload to shared memory, posts sem_w
-│   └── shm_reader.c      # Waits on sem_w, reads payload, posts sem_r
-├── scripts/
-│   ├── run_bench.sh      # Orchestrates both benchmarks end-to-end
-│   └── parse_results.py  # Loads CSVs, prints stats, generates PNG chart
-├── results/
-│   ├── msg_results.csv
-│   ├── shm_results.csv
-│   └── qnx_ipc_benchmark.png
-├── bin/                  # Compiled binaries (generated by make)
+
+Characteristics:
+
+* Kernel-mediated
+* Deterministic
+* Safe synchronization
+* Widely used in QNX microkernel architecture
+
+---
+
+## 2. Shared Memory + Semaphores
+
+A high-performance IPC mechanism using:
+
+```c
+shm_open()
+mmap()
+sem_open()
+sem_wait()
+sem_post()
+```
+
+Characteristics:
+
+* Shared address space
+* Lower copy overhead
+* Manual synchronization required
+* Common in high-throughput embedded pipelines
+
+---
+
+# Benchmark Metrics
+
+For each payload size:
+
+* 8 B
+* 64 B
+* 512 B
+* 4 KB
+* 16 KB
+
+The benchmark computes:
+
+* Average latency
+* Minimum latency
+* p50 latency
+* p95 latency
+* p99 latency
+* p99.9 latency
+* Maximum latency
+
+Each test executes:
+
+* 200 warmup iterations
+* 10,000 measured iterations
+
+---
+
+# Repository Structure
+
+```text
+.
+├── msg_client.c
+├── msg_server.c
+├── shm_writer.c
+├── shm_reader.c
+├── parse_results.py
+├── run_bench.sh
 ├── Makefile
+├── results/
+│   ├── plot_sweep.png
+│   ├── plot_dist_64B.png
+│   └── plot_dist_16384B.png
 └── README.md
 ```
 
 ---
 
-## How it works
+# System Architecture
 
-### Message Passing benchmark
-
+```text
+Ubuntu Linux Host
+│
+├── QNX SDP Toolchain
+├── QEMU Virtual Machine
+│
+└── QNX Neutrino RTOS Guest
+    │
+    ├── Message Passing Benchmark
+    └── Shared Memory Benchmark
 ```
-msg_client  ──MsgSend()──►  msg_server
-            ◄──MsgReply()──
-```
-
-The server (`msg_server.c`) registers a named channel with `name_attach()`
-and blocks on `MsgReceive()`.  The client (`msg_client.c`) connects with
-`name_open()`, then sends a fixed 80-byte `BenchMsg` struct and blocks until
-the reply arrives.  The kernel performs the transfer atomically with priority
-inheritance, so the client thread effectively "donates" its priority to the
-server for the duration of the call.
-
-### Shared Memory benchmark
-
-```
-shm_writer  ──sem_post(sem_w)──►  shm_reader
-            ◄──sem_post(sem_r)──
-```
-
-Both processes map the same `shm_open()` region.  The writer places a
-64-byte payload and a timestamp, then signals `sem_w`.  The reader waits on
-`sem_w`, reads the data, then signals `sem_r` to acknowledge.  Latency is
-measured as the round-trip time from `sem_post` to the return of `sem_wait`.
 
 ---
 
-## Build
+# Environment Setup
 
-### Prerequisites
-
-- QNX Software Development Platform (SDP) 7.x or 8.x
-- `qcc` cross-compiler targeting `x86_64` or `aarch64`
+## 1. Source QNX Environment
 
 ```bash
-# Clone
-git clone https://github.com/YOUR_USERNAME/qnx_ipc_bench.git
-cd qnx_ipc_bench
+source ~/qnx800/qnxsdp-env.sh
+```
 
-# Build (x86-64 target — default)
+---
+
+## 2. Build QNX Executables
+
+```bash
+make clean
 make
-
-# For ARM64 target, edit Makefile: TARGET_FLAGS = -Vgcc_ntoaarch64le
-make clean && make
 ```
 
-Binaries land in `bin/`.
-
----
-
-## Run
-
-### On the QNX target
+Verify binaries:
 
 ```bash
-# Terminal 1 — Message Passing server
-./bin/msg_server
-
-# Terminal 2 — Message Passing client (runs benchmark, saves CSV)
-./bin/msg_client
-
-# Terminal 3 — Shared Memory reader (start before writer)
-./bin/shm_reader
-
-# Terminal 4 — Shared Memory writer (runs benchmark, saves CSV)
-./bin/shm_writer
+file msg_server
 ```
 
-Results are saved to `/tmp/msg_results.csv` and `/tmp/shm_results.csv`.
+Expected:
 
-### Analyse on the host
+```text
+ELF 64-bit ... QNX Neutrino executable
+```
 
-Copy the CSVs into `results/`, activate the Python venv, then:
+---
+
+# Shared Disk Workflow
+
+A FAT disk image was used to transfer binaries between Ubuntu and QNX.
+
+## Create Shared Image
 
 ```bash
-source venv/bin/activate
-python scripts/parse_results.py
+dd if=/dev/zero of=~/qnx_shared.img bs=1M count=64
+mkfs.vfat ~/qnx_shared.img
 ```
-
-This prints the statistics table and writes `results/qnx_ipc_benchmark.png`.
 
 ---
 
-## Configuration
+## Copy Binaries Into Shared Image
 
-All constants are `#define`d at the top of each source file:
-
-| Constant | Default | Description |
-|----------|---------|-------------|
-| `NUM_ITERATIONS` | 10 000 | Benchmark iterations |
-| `WARMUP_ITERS` | 200 | Warm-up iterations (excluded from results) |
-| `SERVER_NAME` | `/bench_server` | `name_attach` registration path |
-| `SHM_NAME` | `/bench_shm` | POSIX shared memory object name |
-| `SEM_WRITE` | `/bench_sem_w` | Writer→reader semaphore |
-| `SEM_READ` | `/bench_sem_r` | Reader→writer semaphore |
+```bash
+mcopy -i ~/qnx_shared.img msg_server ::
+mcopy -i ~/qnx_shared.img msg_client ::
+mcopy -i ~/qnx_shared.img shm_writer ::
+mcopy -i ~/qnx_shared.img shm_reader ::
+```
 
 ---
 
-## Improving real-time accuracy
+# QEMU Boot Command
 
-For tighter, more reproducible numbers on a production QNX target:
-
-```c
-// Set FIFO scheduling and elevate priority
-struct sched_param sp = { .sched_priority = 63 };
-pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
-
-// Pin to an isolated CPU
-ThreadCtl(_NTO_TCTL_RUNMASK, (void *)(uintptr_t)(1 << CPU_ID));
+```bash
+qemu-system-x86_64 \
+-M pc-i440fx-7.2 \
+-cpu Haswell \
+-m 512 \
+-hda disk-qemu \
+-drive file=~/qnx_shared.img,format=raw,index=1,media=disk \
+-no-acpi \
+-no-hpet \
+-nographic \
+-monitor none
 ```
-
-Also consider:
-- Running on a dedicated CPU partition (`procnto -mn` partition flags)
-- Disabling timer coalescing
-- Using `ClockCycles()` instead of `clock_gettime()` for sub-nanosecond
-  timestamp resolution
 
 ---
 
-## Dependencies (analysis scripts)
+# Mount Shared Image Inside QNX
 
+```bash
+mount -t dos /dev/hd1 /fs
 ```
-Python 3.12
-numpy
-matplotlib
-```
-
-A `venv/` with all dependencies is included in the repository for convenience.
 
 ---
 
-## License
+# Copy Binaries To Writable Filesystem
 
-MIT — see [LICENSE](LICENSE).
+```bash
+cp /fs/msg_server /tmp/
+cp /fs/msg_client /tmp/
+cp /fs/shm_writer /tmp/
+cp /fs/shm_reader /tmp/
+```
+
+---
+
+# Make Executables Runnable
+
+```bash
+chmod +x /tmp/msg_server
+chmod +x /tmp/msg_client
+chmod +x /tmp/shm_writer
+chmod +x /tmp/shm_reader
+```
+
+---
+
+# Running The Benchmarks
+
+## Message Passing Benchmark
+
+Start server:
+
+```bash
+/tmp/msg_server &
+```
+
+Run client:
+
+```bash
+/tmp/msg_client
+```
+
+---
+
+## Shared Memory Benchmark
+
+Start writer:
+
+```bash
+/tmp/shm_writer &
+```
+
+Run reader:
+
+```bash
+/tmp/shm_reader
+```
+
+---
+
+# Extracting Results
+
+Inside QNX:
+
+```bash
+cp /tmp/*summary*.csv /fs/
+cp /tmp/*results_*B.csv /fs/
+```
+
+Back on Ubuntu:
+
+```bash
+mkdir -p results
+```
+
+```bash
+mcopy -i ~/qnx_shared.img ::msg_summary.csv results/
+mcopy -i ~/qnx_shared.img ::shm_summary.csv results/
+```
+
+---
+
+# Visualization
+
+Run:
+
+```bash
+python3 parse_results.py
+```
+
+Generated plots:
+
+* `plot_sweep.png`
+* `plot_dist_64B.png`
+* `plot_dist_16384B.png`
+
+---
+
+# Benchmark Results
+
+## Message Passing Results
+
+| Payload | Avg Latency | p99 Latency |
+| ------- | ----------- | ----------- |
+| 8 B     | 1063.59 us  | 7047.77 us  |
+| 64 B    | 1034.80 us  | 6363.86 us  |
+| 512 B   | 1030.56 us  | 6905.62 us  |
+| 4 KB    | 1263.64 us  | 7930.52 us  |
+| 16 KB   | 1336.37 us  | 8393.30 us  |
+
+---
+
+## Shared Memory Results
+
+| Payload | Avg Latency | p99 Latency |
+| ------- | ----------- | ----------- |
+| 8 B     | 1020.72 us  | 5615.23 us  |
+| 64 B    | 1082.72 us  | 7695.70 us  |
+| 512 B   | 1074.92 us  | 7336.80 us  |
+| 4 KB    | 979.41 us   | 6595.05 us  |
+| 16 KB   | 1359.62 us  | 9008.37 us  |
+
+---
+
+# Observations
+
+* Shared memory was not dramatically faster under QEMU virtualization.
+* Host scheduling and virtualization overhead dominate latency.
+* p99 latency remained below 10 ms for all payloads.
+* Message passing showed stable deterministic behavior.
+* Shared memory required explicit synchronization.
+
+On real hardware:
+
+* jitter would decrease significantly
+* average latency would reduce
+* determinism would improve further
+
+---
+
+# What This Project Demonstrates
+
+This project demonstrates:
+
+* RTOS workflow setup
+* Cross-compilation using QNX SDP
+* QEMU-based RTOS virtualization
+* Real-time IPC benchmarking
+* Payload scaling analysis
+* Statistical latency characterization
+* Shared memory synchronization
+* QNX microkernel communication architecture
+
+---
+
+# Skills Demonstrated
+
+* Embedded Systems
+* RTOS Development
+* QNX Neutrino
+* POSIX IPC
+* QEMU Virtualization
+* Performance Benchmarking
+* Linux Toolchains
+* Real-Time Systems
+* C Programming
+* Systems Programming
+* Data Visualization
+
+---
+
+# Future Improvements
+
+Potential extensions:
+
+* CPU stress testing
+* Thread priority benchmarking
+* Real-time scheduling experiments
+* Multi-process sensor fusion simulation
+* Pulse-based IPC benchmarking
+* Real hardware deployment
+* ARM/QNX target support
+* Latency heatmaps and tracing
+
+---
+
+# Author
+
+Apratim Phadke
+
+Electronics & Telecommunication Engineering
+Embedded Systems + RTOS + VLSI Enthusiast
