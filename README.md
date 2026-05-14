@@ -5,7 +5,8 @@ A professional RTOS IPC benchmarking project built on **QNX Neutrino 8.0** runni
 <img width="1784" height="593" alt="plot_dist_64B" src="https://github.com/user-attachments/assets/a22b5119-786f-44ac-98d3-85b74462ee38" />
 <img width="1784" height="593" alt="plot_dist_16384B" src="https://github.com/user-attachments/assets/2ead498e-cdf3-4d1d-9762-fd62a050e5c6" />
 <img width="1934" height="763" alt="plot_sweep" src="https://github.com/user-attachments/assets/f339a657-4593-41de-b2b2-d4d18eb16c17" />
-<img width="1934" height="763" alt="plot_sweep" src="https://github.com/user-attachments/assets/4f0eaf86-3005-43d6-80eb-eb10524dabe1" />
+<img width="1600" height="864" alt="image" src="https://github.com/user-attachments/assets/d50eab26-819a-4e88-b190-5b27ad9bd587" />
+
 
 
 This project benchmarks and compares two fundamental inter-process communication mechanisms used in real-time embedded systems:
